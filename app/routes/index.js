@@ -1,57 +1,30 @@
 'use strict';
 
+var express = require('express');
 var path = process.cwd();
-var ClickHandler = require(path + '/app/controllers/clickHandler.server.js');
+var app = express();
+var search =require(path + '/app/search.js');
 
-module.exports = function (app, passport) {
-
-	function isLoggedIn (req, res, next) {
-		if (req.isAuthenticated()) {
-			return next();
-		} else {
-			res.redirect('/login');
+	app.get('/', function(req, res) {
+		res.sendFile(path + '/README.md')
+	});
+	
+	app.route('/search/*').get(function(req,res){
+		var pageOffset = req.query.offset;
+		if(pageOffset == undefined){
+			pageOffset = 0;
 		}
-	}
-
-	var clickHandler = new ClickHandler();
-
-	app.route('/')
-		.get(isLoggedIn, function (req, res) {
-			res.sendFile(path + '/public/index.html');
+		search.findStr(req.params[0], pageOffset, function(str){
+			res.send(str);
 		});
-
-	app.route('/login')
-		.get(function (req, res) {
-			res.sendFile(path + '/public/login.html');
+	});
+	
+	app.route('/recent').get(function(req,res){
+		search.showRec(function(data){
+			res.send(data);
 		});
+	})
 
-	app.route('/logout')
-		.get(function (req, res) {
-			req.logout();
-			res.redirect('/login');
-		});
-
-	app.route('/profile')
-		.get(isLoggedIn, function (req, res) {
-			res.sendFile(path + '/public/profile.html');
-		});
-
-	app.route('/api/:id')
-		.get(isLoggedIn, function (req, res) {
-			res.json(req.user.github);
-		});
-
-	app.route('/auth/github')
-		.get(passport.authenticate('github'));
-
-	app.route('/auth/github/callback')
-		.get(passport.authenticate('github', {
-			successRedirect: '/',
-			failureRedirect: '/login'
-		}));
-
-	app.route('/api/:id/clicks')
-		.get(isLoggedIn, clickHandler.getClicks)
-		.post(isLoggedIn, clickHandler.addClick)
-		.delete(isLoggedIn, clickHandler.resetClicks);
-};
+app.listen(8080, function(req,res){
+    console.log("Listening on port 8080");
+});
